@@ -1,0 +1,70 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  wolfeidau: Cloudformation deployment bucket used to host Serverless Application Model (SAM) artifacts and publish to Serverless Application Repository (SAR)
+Parameters:
+  AppName:
+    Type: String
+    Description: The name of the application.
+    Default: "realworld-aws-api"
+
+  Stage:
+    Type: String
+    Description: The stage where the application is running in, e.g., dev, prod.
+    Default: "dev"
+  
+  Branch:
+    Type: String
+    Default: "master"
+
+Resources:
+  DeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+
+  DeploymentBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DeploymentBucket
+      PolicyDocument: 
+        Statement: 
+          - Sid: AllowServerlessRepo
+            Effect: Allow
+            Principal:
+              Service: "serverlessrepo.amazonaws.com"
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub "arn:aws:s3:::${DeploymentBucket}/*"
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - s3:*
+            Resource:
+              - !Sub "arn:aws:s3:::${DeploymentBucket}/*"
+              - !Sub "arn:aws:s3:::${DeploymentBucket}"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  DeploymentBucketParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/config/${Stage}/${Branch}/${AppName}/deploy_bucket"
+      Type: String
+      Value:
+        Ref: DeploymentBucket
+
+Outputs:
+  DeploymentBucketName:
+    Value: !Ref DeploymentBucket

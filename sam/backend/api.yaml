@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "wolfeidau: OpenID proxy server HTTP API."
+
+Parameters:
+  Stage:
+    Type: String
+    Description: The stage of development, e.g., dev, test, prod.
+    Default: dev
+  Branch:
+    Type: String
+    Description: The branch used to deploy.
+    Default: master
+
+Globals:
+  Function:
+    Runtime: go1.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        BRANCH: !Ref Branch
+
+Resources:
+
+  ProxyHTTPAPI:
+    Type: AWS::Serverless::HttpApi
+
+  ProxyAPIFunction: 
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../dist/handler.zip
+      Handler: proxy-lambda
+      Events:
+        ApiCall:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ProxyHTTPAPI
+
+Outputs:
+  ProxyHTTPAPIEndpoint:
+    Description: The API Gateway endpoint address of the Proxy REST API.
+    Value: !Sub "https://${ProxyHTTPAPI}.execute-api.${AWS::Region}.amazonaws.com"
