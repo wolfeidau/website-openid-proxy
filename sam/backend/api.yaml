@@ -1,8 +1,11 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: "wolfeidau: OpenID proxy server HTTP API."
 
 Parameters:
+  AppName:
+    Type: String
+    Description: The name of the application.
   Stage:
     Type: String
     Description: The stage of development, e.g., dev, test, prod.
@@ -11,6 +14,19 @@ Parameters:
     Type: String
     Description: The branch used to deploy.
     Default: master
+  ClientID:
+    Type: String
+  ClientSecret:
+    Type: String
+  Issuer:
+    Type: String
+  HostedZoneId:
+    Type: String
+  HostedZoneName:
+    Type: String
+  SubDomainName:
+    Type: String
+    Default: siteproxy
 
 Globals:
   Function:
@@ -23,22 +39,120 @@ Globals:
         BRANCH: !Ref Branch
 
 Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - s3:*
+            Resource:
+              - !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+              - !Sub "arn:aws:s3:::${WebsiteBucket}"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  SessionSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: "The session secret for proxy server"
+      GenerateSecretString:
+        PasswordLength: 32
+        ExcludePunctuation: True
+
+  ProxyHTTPAPIAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/AccessLog-API-${AppName}-${Stage}-${Branch}"
+      RetentionInDays: 30
+
+  ACMCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub "${SubDomainName}.${HostedZoneName}"
+      DomainValidationOptions:
+        - DomainName: !Sub "${SubDomainName}.${HostedZoneName}"
+          HostedZoneId: !Ref HostedZoneId
+      ValidationMethod: DNS
 
   ProxyHTTPAPI:
     Type: AWS::Serverless::HttpApi
+    Properties:
+      Domain:
+        DomainName: !Sub "${SubDomainName}.${HostedZoneName}"
+        CertificateArn: !Ref ACMCertificate
+        Route53:
+          HostedZoneId: !Ref HostedZoneId
+          HostedZoneName: !Ref HostedZoneName
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 10
+        DetailedMetricsEnabled: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt ProxyHTTPAPIAccessLogGroup.Arn
+        Format: "$context.requestId $context.domainName $context.httpMethod $context.identity.sourceIp $context.path $context.protocol $context.requestId $context.requestTime $context.status $context.responseLength $context.responseLatency $context.integrationLatency"
 
-  ProxyAPIFunction: 
+  ProxyAPIFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../../dist/handler.zip
       Handler: proxy-lambda
+      Environment:
+        Variables:
+          CLIENT_ID: !Ref ClientID
+          CLIENT_SECRET: !Ref ClientSecret
+          ISSUER: !Ref Issuer
+          REDIRECT_URL: !Sub "https://${SubDomainName}.${HostedZoneName}/auth/callback"
+          SESSION_SECRET_ARN: !Ref SessionSecret
+          WEBSITE_BUCKET: !Ref WebsiteBucket
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref WebsiteBucket
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SessionSecret
       Events:
         ApiCall:
           Type: HttpApi
           Properties:
             ApiId: !Ref ProxyHTTPAPI
 
+  ProxyAPIFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ProxyAPIFunction}"
+      RetentionInDays: 30
+
 Outputs:
   ProxyHTTPAPIEndpoint:
     Description: The API Gateway endpoint address of the Proxy REST API.
-    Value: !Sub "https://${ProxyHTTPAPI}.execute-api.${AWS::Region}.amazonaws.com"
+    Value: !Sub "https://${SubDomainName}.${HostedZoneName}"
+  ProxyAPIFunctionLogGroup:
+    Description: The log group which stores lambda logs.
+    Value: !Ref ProxyAPIFunction
+  ProxyHTTPAPI:
+    Description: The proxy http API.
+    Value: !Ref ProxyHTTPAPI
+  ProxyHTTPAPIAccessLogGroup:
+    Description: The log group which stores api gateway access logs.
+    Value: !Ref ProxyHTTPAPIAccessLogGroup
+  WebsiteBucketName:
+    Description: The name of the bucket hosting website content.
+    Value: !Ref WebsiteBucket

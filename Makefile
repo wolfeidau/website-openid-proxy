@@ -29,9 +29,6 @@ $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}:
 $(BIN_DIR)/mockgen:
 	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/golang/mock/mockgen
 
-$(BIN_DIR)/gcov2lcov:
-	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/jandelgado/gcov2lcov
-
 clean:
 	@echo "--- clean all the things"
 	@rm -rf ./dist
@@ -47,10 +44,10 @@ lint-fix: $(BIN_DIR)/golangci-lint
 	@$(BIN_DIR)/golangci-lint run --fix
 .PHONY: lint-fix
 
-test: $(BIN_DIR)/gcov2lcov
+test:
 	@echo "--- test all the things"
-	@go test -v -covermode=count -coverprofile=coverage.txt ./internal/...
-	@$(BIN_DIR)/gcov2lcov -infile=coverage.txt -outfile=coverage.lcov
+	@go test -covermode=count -coverprofile=coverage.txt ./internal/...
+	@go tool cover -func=coverage.txt
 .PHONY: test
 
 build:
@@ -101,5 +98,7 @@ deploy:
 		--capabilities CAPABILITY_IAM \
 		--tags "environment=$(STAGE)" "branch=$(BRANCH)" "service=$(APPNAME)" \
 		--stack-name $(APPNAME)-$(STAGE)-$(BRANCH) \
-		--parameter-overrides AppName=$(APPNAME) Stage=$(STAGE) Branch=$(BRANCH)
+		--parameter-overrides AppName=$(APPNAME) Stage=$(STAGE) Branch=$(BRANCH) \
+			ClientID=$(CLIENT_ID) ClientSecret=$(CLIENT_SECRET) Issuer=$(ISSUER) \
+			HostedZoneId=$(HOSTED_ZONE_ID) HostedZoneName=$(HOSTED_ZONE_NAME)
 .PHONY: deploy

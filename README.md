@@ -9,8 +9,8 @@ This service uses [AWS API Gateway](https://aws.amazon.com/api-gateway/) HTTP AP
 1. Provide a secure audited access layer to static websites hosted in s3.
 2. Utilise [AWS lambda](https://aws.amazon.com/lambda/) to enable low to no cost of hosting.
 3. Take advantage of the rate limiting provided by AWS API Gateway to ensure access isn't possible using [brute force attacks](https://en.wikipedia.org/wiki/Brute-force_attack).
-4. Use the authoriser lambdas to ensure there is a clear separation between access and authentication logic.
-5. Use existing opensource libraries to provide secure access via cookies.
+4. Use existing opensource libraries to provide secure access via cookies.
+5. Support OpenID authentication of users accessing the site.
 
 # License
 
