@@ -46,7 +46,7 @@ lint-fix: $(BIN_DIR)/golangci-lint
 
 test:
 	@echo "--- test all the things"
-	@go test -covermode=count -coverprofile=coverage.txt ./internal/...
+	@go test -coverprofile=coverage.txt ./...
 	@go tool cover -func=coverage.txt
 .PHONY: test
 

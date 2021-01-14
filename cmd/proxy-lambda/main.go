@@ -57,6 +57,12 @@ func main() {
 
 	login.RegisterRoutes(agr)
 
+	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
+		Skipper: server.LoginSkipper("/auth"),
+		Store:   sessionStore,
+	})
+	e.Use(sessionMiddleware)
+
 	fs := s3middleware.New(s3middleware.FilesConfig{
 		SPA:     true,
 		Index:   "index.html",
@@ -69,12 +75,11 @@ func main() {
 		},
 	})
 
-	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
+	e.Use(server.CheckAuthWithConfig(server.Config{
 		Skipper: server.LoginSkipper("/auth"),
-		Store:   sessionStore,
-	})
+	}))
 
-	e.Use(fs.StaticBucket(cfg.WebsiteBucket), sessionMiddleware)
+	e.Use(fs.StaticBucket(cfg.WebsiteBucket))
 
 	gw := gateway.NewGateway(e)
 
