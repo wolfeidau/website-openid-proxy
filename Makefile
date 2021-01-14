@@ -15,7 +15,7 @@ BIN_DIR ?= $(shell pwd)/bin
 
 default: clean build archive deploy-bucket package deploy
 
-ci: clean generate lint test
+ci: clean lint test
 .PHONY: ci
 
 LDFLAGS := -ldflags="-s -w -X $(MODULE_PKG)/internal/app.BuildDate=${BUILD_DATE} -X $(MODULE_PKG)/internal/app.Commit=${GIT_HASH}"
