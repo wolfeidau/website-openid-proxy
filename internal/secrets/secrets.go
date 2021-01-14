@@ -13,7 +13,7 @@ type Cache struct {
 }
 
 func NewCache(awscfg *aws.Config) *Cache {
-	sess := session.New(awscfg)
+	sess := session.Must(session.NewSession(awscfg))
 
 	return &Cache{
 		ssmsvc: secretsmanager.New(sess),

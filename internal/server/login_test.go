@@ -10,9 +10,9 @@ import (
 	"github.com/dghubble/sessions"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"github.com/wolfeidau/aws-openid-proxy/internal/cookie"
-	"github.com/wolfeidau/aws-openid-proxy/internal/logger"
-	"github.com/wolfeidau/aws-openid-proxy/internal/state"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/cookie"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/logger"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/state"
 )
 
 func TestLogin(t *testing.T) {

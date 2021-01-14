@@ -11,8 +11,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
-	"github.com/wolfeidau/aws-openid-proxy/internal/echosessions"
-	"github.com/wolfeidau/aws-openid-proxy/internal/state"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/state"
 	"golang.org/x/oauth2"
 )
 

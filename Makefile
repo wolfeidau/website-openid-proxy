@@ -1,8 +1,8 @@
-APPNAME := aws-openid-proxy
+APPNAME := s3website-openid-proxy
 STAGE ?= dev
 BRANCH ?= master
 SAR_VERSION ?= 1.0.0
-MODULE_PKG := github.com/wolfeidau/aws-openid-proxy
+MODULE_PKG := github.com/wolfeidau/s3website-openid-proxy
 
 GOLANGCI_VERSION = 1.31.0
 
@@ -100,5 +100,6 @@ deploy:
 		--stack-name $(APPNAME)-$(STAGE)-$(BRANCH) \
 		--parameter-overrides AppName=$(APPNAME) Stage=$(STAGE) Branch=$(BRANCH) \
 			ClientID=$(CLIENT_ID) ClientSecret=$(CLIENT_SECRET) Issuer=$(ISSUER) \
-			HostedZoneId=$(HOSTED_ZONE_ID) HostedZoneName=$(HOSTED_ZONE_NAME)
+			HostedZoneId=$(HOSTED_ZONE_ID) HostedZoneName=$(HOSTED_ZONE_NAME) \
+			SubDomainName=$(SUBDOMAIN_NAME)
 .PHONY: deploy

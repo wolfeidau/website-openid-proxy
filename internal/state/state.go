@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 
 	"github.com/labstack/echo/v4"
-	"github.com/wolfeidau/aws-openid-proxy/internal/cookie"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/cookie"
 )
 
 const (

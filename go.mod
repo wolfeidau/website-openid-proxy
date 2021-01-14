@@ -1,4 +1,4 @@
-module github.com/wolfeidau/aws-openid-proxy
+module github.com/wolfeidau/s3website-openid-proxy
 
 go 1.15
 
@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go v1.36.26
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dghubble/sessions v0.1.0
-	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/pquerna/cachecontrol v0.0.0-20201205024021-ac21108117ac // indirect
