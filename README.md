@@ -6,6 +6,17 @@ It is designed to be a simple way to add authentication to [static websites](htt
 
 This service uses [AWS API Gateway](https://aws.amazon.com/api-gateway/) HTTP APIs and is powered by [AWS Lambda](https://aws.amazon.com/lambda/).
 
+# How it works
+
+![ArchitectureDiagram](docs/images/diagram.png)
+
+1. Each request to the site checks for a session cookie prior to returning a response. If a user accesses the site for the first time users they are redirected to the OpenID provider.
+2. User authenticates with the OpenID provider and is redirected back to the website as per the [OAuth 2.0 Authorization Code Grant Type](https://developer.okta.com/blog/2018/04/10/oauth-authorization-code-grant-type#what-is-an-oauth-20-grant-type).
+3. After authentication occurs the users info is retrieved, this includes `sub` and `email`, both of these are saved to the users session and logged when accessing content.
+4. Uses the API Gateway version 2 format which includes support for cookies, this is translated to normal HTTP requests using [apex/gateway](https://github.com/apex/gateway).
+5. GET requests are translated into GetObject requests which retrieve objects from the S3 bucket using [wolfeidau/echo-s3-middleware](https://github.com/wolfeidau/echo-s3-middleware). All these requests pass through the service.
+6. The secret used to sign session cookies is stored in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
+
 # Goals
 
 1. Provide a simple authentication access to static websites hosted in s3.
@@ -13,18 +24,6 @@ This service uses [AWS API Gateway](https://aws.amazon.com/api-gateway/) HTTP AP
 3. Take advantage of the rate limiting provided by AWS API Gateway to ensure access isn't possible using [brute force attacks](https://en.wikipedia.org/wiki/Brute-force_attack).
 4. Use existing opensource libraries to provide secure access via cookies.
 5. Support OpenID authentication of users accessing the site.
-
-# How it works
-
-![ArchitectureDiagram](docs/images/diagram.png)
-
-1. When accessing the site for the first time users are redirected to the OpenID service to authenticate.
-2. Each request to the site checks for a session cookie prior to returning a response.
-3. After authentication occurs the users info is retrieved, this includes `sub` and `email`, both of these are saved to the users session and logged when accessing content.
-4. Uses the API Gateway version 2 format which includes support for cookies, this is translated to normal HTTP requests using [apex/gateway](https://github.com/apex/gateway).
-5. GET requests are translated into GetObject requests which retrieve objects from the S3 bucket using [wolfeidau/echo-s3-middleware](https://github.com/wolfeidau/echo-s3-middleware). All these requests pass through the service.
-6. The secret used to sign session cookies is stored in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
-
 # Deployment
 
 You will need the following tools.
