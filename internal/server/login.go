@@ -2,67 +2,39 @@ package server
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/coreos/go-oidc"
-	"github.com/dghubble/sessions"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/state"
 	"golang.org/x/oauth2"
 )
 
-type ProviderFunc = func(ctx context.Context, issuer string) (*oidc.Provider, error)
+const (
+	authCookieName   = "proxy_auth_session"
+	authCookieExpiry = 5 * 60 // 5 minutes
 
-// AuthConfig authentication configuration for to enable openid login
-type AuthConfig struct {
-	Issuer       string
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
-	StateStore   state.Store
-	ProviderFunc ProviderFunc
-}
+	loggedInCookieName   = "proxy_login_session"
+	loggedInCookieExpiry = 8 * 60 * 60 // 8 hours
 
-// Valid validate our configuration
-func (ac *AuthConfig) Valid() error {
-	if ac.Issuer == "" {
-		return errors.New("empty Issuer")
-	}
-	if ac.ClientID == "" {
-		return errors.New("empty ClientID")
-	}
-	if ac.ClientSecret == "" {
-		return errors.New("empty ClientSecret")
-	}
+	stateLength = 32
+)
 
-	if ac.RedirectURL == "" {
-		return errors.New("empty RedirectURL")
-	}
-
-	if ac.StateStore == nil {
-		return errors.New("empty StateStore")
-	}
-
-	if ac.ProviderFunc == nil {
-		ac.ProviderFunc = oidc.NewProvider
-	}
-
-	return nil
+// Callback callback info
+type Callback struct {
+	Code  string `query:"code"`
+	State string `query:"state"`
 }
 
 // Auth authentication related handlers
 type Auth struct {
-	authConfig   *AuthConfig
-	sessionStore sessions.Store
-	provider     *oidc.Provider
+	authConfig *AuthConfig
+	provider   *oidc.Provider
 }
 
-func NewAuth(ac *AuthConfig, sessionStore sessions.Store) (*Auth, error) {
+// NewAuth new auth server http handlers
+func NewAuth(ac *AuthConfig) (*Auth, error) {
 
 	if err := ac.Valid(); err != nil {
 		return nil, err
@@ -73,17 +45,42 @@ func NewAuth(ac *AuthConfig, sessionStore sessions.Store) (*Auth, error) {
 		return nil, err
 	}
 
-	return &Auth{authConfig: ac, sessionStore: sessionStore, provider: provider}, nil
+	return &Auth{authConfig: ac, provider: provider}, nil
 }
 
+// Login login http handler
 func (l *Auth) Login(c echo.Context) error {
 
-	state := l.authConfig.StateStore.Init(c)
+	ctx := c.Request().Context()
+
+	state := MustRandomState(stateLength)
+
+	authSess, err := echosessions.New(authCookieName, c)
+	if err != nil {
+		log.Ctx(ctx).Error().Stack().Err(err).Msg("failed to create new session")
+
+		// TODO: Need an error page
+		return c.String(http.StatusInternalServerError, "failed to process request")
+	}
+
+	// override the default cookie settings
+	authSess.Config.MaxAge = authCookieExpiry
+	authSess.Config.Secure = true
+	authSess.Values["state"] = state
+
+	err = authSess.Save(c.Response())
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to save session")
+
+		// TODO: Need an error page
+		return c.String(http.StatusInternalServerError, "failed to process request")
+	}
 
 	// send the caller off to their login server
 	return c.Redirect(http.StatusFound, l.oauthConfig().AuthCodeURL(state, oauth2.AccessTypeOffline))
 }
 
+// Callback callback http handler
 func (l *Auth) Callback(c echo.Context) error {
 
 	ctx := c.Request().Context()
@@ -97,13 +94,24 @@ func (l *Auth) Callback(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "failed to process request")
 	}
 
-	state, err := l.authConfig.StateStore.Get(c)
+	authSess, err := echosessions.Get(authCookieName, c)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to get state")
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get auth session")
 
 		// TODO: Need an error page
 		return c.String(http.StatusInternalServerError, "failed to process request")
 	}
+
+	state, ok := authSess.Values["state"].(string)
+	if !ok {
+		log.Ctx(ctx).Error().Msg("missing state attribute from session")
+
+		// TODO: Need an error page
+		return c.String(http.StatusBadRequest, "failed to process request")
+	}
+
+	// clean up the completed auth session
+	defer authSess.Destroy(c.Response())
 
 	if cb.State == "" && state != cb.State {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to validate state")
@@ -128,12 +136,21 @@ func (l *Auth) Callback(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "failed to process request")
 	}
 
-	sess := l.sessionStore.New("proxy")
+	loginSess, err := echosessions.New(loggedInCookieName, c)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get new session")
 
-	sess.Values["email"] = userInfo.Email
-	sess.Values["sub"] = userInfo.Subject
+		// TODO: Need an error page
+		return c.String(http.StatusInternalServerError, "failed to process request")
+	}
 
-	err = sess.Save(c.Response())
+	// override the default cookie settings
+	loginSess.Config.Secure = true
+	loginSess.Config.MaxAge = loggedInCookieExpiry
+	loginSess.Values["email"] = userInfo.Email
+	loginSess.Values["sub"] = userInfo.Subject
+
+	err = loginSess.Save(c.Response())
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to save session")
 
@@ -144,17 +161,28 @@ func (l *Auth) Callback(c echo.Context) error {
 	return c.Redirect(http.StatusFound, "/")
 }
 
+// UserInfo user info http handler
 func (l *Auth) UserInfo(c echo.Context) error {
 	return c.NoContent(http.StatusNotImplemented)
 }
 
+// Logout logout http handler
 func (l *Auth) Logout(c echo.Context) error {
 
-	l.sessionStore.Destroy(c.Response(), "proxy")
+	ctx := c.Request().Context()
+
+	err := echosessions.Destroy(loggedInCookieName, c)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get new session")
+
+		// TODO: Need an error page
+		return c.String(http.StatusInternalServerError, "failed to process request")
+	}
 
 	return c.NoContent(http.StatusOK)
 }
 
+// RegisterRoutes register the login related auth routes
 func (l *Auth) RegisterRoutes(r interface {
 	GET(string, echo.HandlerFunc, ...echo.MiddlewareFunc) *echo.Route
 }) {
@@ -171,41 +199,5 @@ func (l *Auth) oauthConfig() *oauth2.Config {
 		Endpoint:     l.provider.Endpoint(),
 		RedirectURL:  l.authConfig.RedirectURL,
 		Scopes:       []string{"email", "openid"},
-	}
-}
-
-// LoginSkipper used to avoid running middleware for login requests
-func LoginSkipper(prefix string) middleware.Skipper {
-	return func(c echo.Context) bool {
-		return strings.HasPrefix(c.Path(), prefix)
-	}
-}
-
-// Callback callback info
-type Callback struct {
-	Code  string `query:"code"`
-	State string `query:"state"`
-}
-
-type Config struct {
-	Skipper middleware.Skipper
-}
-
-func CheckAuthWithConfig(cfg Config) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if cfg.Skipper(c) {
-				return next(c)
-			}
-
-			sess, err := echosessions.Get("proxy", c)
-			if err != nil {
-				return c.Redirect(302, "/auth/login")
-			}
-
-			log.Ctx(c.Request().Context()).Info().Fields(sess.Values).Msg("user request")
-
-			return next(c)
-		}
 	}
 }

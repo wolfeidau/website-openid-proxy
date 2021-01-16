@@ -41,6 +41,30 @@ func Get(name string, c echo.Context) (*sessions.Session, error) {
 	return store.Get(c.Request(), name)
 }
 
+// New returns a new session
+func New(name string, c echo.Context) (*sessions.Session, error) {
+	s := c.Get(key)
+	if s == nil {
+		return nil, fmt.Errorf("%q session not found", name)
+	}
+	store := s.(sessions.Store)
+
+	return store.New(name), nil
+}
+
+// Destroy destroy existing session
+func Destroy(name string, c echo.Context) error {
+	s := c.Get(key)
+	if s == nil {
+		return fmt.Errorf("%q session not found", name)
+	}
+	store := s.(sessions.Store)
+
+	store.Destroy(c.Response(), name)
+
+	return nil
+}
+
 // Middleware returns a Session middleware.
 func Middleware(store sessions.Store) echo.MiddlewareFunc {
 	c := DefaultConfig
