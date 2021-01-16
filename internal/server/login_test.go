@@ -51,5 +51,5 @@ func TestLogin(t *testing.T) {
 
 	assert.NoError(err)
 	assert.Equal(302, rec.Result().StatusCode)
-	assert.Contains(rec.Result().Header.Get(echo.HeaderLocation), "client_id=abc123&redirect_uri=http%3A%2F%2Flocalhost%2Fcallback&response_type=code")
+	assert.Contains(rec.Result().Header.Get(echo.HeaderLocation), "redirect_uri=http%3A%2F%2Flocalhost%2Fcallback&response_type=code")
 }

@@ -12,7 +12,7 @@ This service uses [AWS API Gateway](https://aws.amazon.com/api-gateway/) HTTP AP
 
 1. Each request to the site checks for a session cookie prior to returning a response. If a user accesses the site for the first time users they are redirected to the OpenID provider.
 2. User authenticates with the OpenID provider and is redirected back to the website as per the [OAuth 2.0 Authorization Code Grant Type](https://developer.okta.com/blog/2018/04/10/oauth-authorization-code-grant-type#what-is-an-oauth-20-grant-type).
-3. After authentication occurs the users info is retrieved, this includes `sub` and `email`, both of these are saved to the users session and logged when accessing content.
+3. After authentication occurs the users info is retrieved, this includes `sub` and `email`, both of these are saved to the users session and logged when accessing content. [PKCE](https://oauth.net/2/pkce/) is used to add an extra layer of verification for this exchange.
 4. Uses the API Gateway version 2 format which includes support for cookies, this is translated to normal HTTP requests using [apex/gateway](https://github.com/apex/gateway).
 5. GET requests are translated into GetObject requests which retrieve objects from the S3 bucket using [wolfeidau/echo-s3-middleware](https://github.com/wolfeidau/echo-s3-middleware). All these requests pass through the service.
 6. The secret used to sign session cookies is stored in [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
@@ -73,7 +73,6 @@ make
 
 # TODO
 
-* [ ] Add support for [PKCE](https://oauth.net/2/pkce/)
 * [ ] Add an example using [AWS Cognito](https://aws.amazon.com/cognito/) via OpenID.
 * [ ] Add an example with [Amazon Cloudfront](https://aws.amazon.com/cloudfront/) in front of the API Gateway supporting the use of [AWS WAF](https://aws.amazon.com/waf/) to enable IP whitelisting and other [AWS managed rule sets](https://docs.aws.amazon.com/waf/latest/developerguide/aws-managed-rule-groups-list.html) for compliance. 
 * [ ] Provide some options to configure what cache headers for single page applications which already use [cache busting](https://www.keycdn.com/support/what-is-cache-busting) for their assets.
