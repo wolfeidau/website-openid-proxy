@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/pkce"
 	"golang.org/x/oauth2"
 )
 
@@ -54,6 +55,7 @@ func (l *Auth) Login(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	state := MustRandomState(stateLength)
+	verifier := pkce.MustNewVerifier(32)
 
 	authSess, err := echosessions.New(authCookieName, c)
 	if err != nil {
@@ -67,6 +69,7 @@ func (l *Auth) Login(c echo.Context) error {
 	authSess.Config.MaxAge = authCookieExpiry
 	authSess.Config.Secure = true
 	authSess.Values["state"] = state
+	authSess.Values["verifier"] = verifier
 
 	err = authSess.Save(c.Response())
 	if err != nil {
@@ -76,8 +79,14 @@ func (l *Auth) Login(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "failed to process request")
 	}
 
+	redirectURL := l.oauthConfig().AuthCodeURL(state,
+		oauth2.AccessTypeOffline,
+		oauth2.SetAuthURLParam("code_challenge", pkce.MustCodeChallengeS256(verifier)),
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+	)
+
 	// send the caller off to their login server
-	return c.Redirect(http.StatusFound, l.oauthConfig().AuthCodeURL(state, oauth2.AccessTypeOffline))
+	return c.Redirect(http.StatusFound, redirectURL)
 }
 
 // Callback callback http handler
@@ -110,6 +119,14 @@ func (l *Auth) Callback(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "failed to process request")
 	}
 
+	verifier, ok := authSess.Values["verifier"].(string)
+	if !ok {
+		log.Ctx(ctx).Error().Msg("missing verifier attribute from session")
+
+		// TODO: Need an error page
+		return c.String(http.StatusBadRequest, "failed to process request")
+	}
+
 	// clean up the completed auth session
 	defer authSess.Destroy(c.Response())
 
@@ -120,7 +137,7 @@ func (l *Auth) Callback(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "failed to process request")
 	}
 
-	tokens, err := l.oauthConfig().Exchange(ctx, cb.Code)
+	tokens, err := l.oauthConfig().Exchange(ctx, cb.Code, oauth2.SetAuthURLParam("code_verifier", verifier))
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to exchange tokens")
 
