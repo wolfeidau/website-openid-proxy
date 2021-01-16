@@ -16,12 +16,10 @@ import (
 	"github.com/wolfeidau/lambda-go-extras/middleware/raw"
 	zlog "github.com/wolfeidau/lambda-go-extras/middleware/zerolog"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/app"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/cookie"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/flags"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/secrets"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/server"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/state"
 )
 
 var cfg = new(flags.API)
@@ -38,9 +36,13 @@ func main() {
 		log.Fatal().Err(err).Msg("login config failed")
 	}
 
-	sessionStore := sessions.NewCookieStore([]byte(sessionSecret), nil)
-
 	e := echo.New()
+
+	// session middleware is available everwhere
+	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
+		Store: sessions.NewCookieStore([]byte(sessionSecret), nil),
+	})
+	e.Use(sessionMiddleware)
 
 	agr := e.Group("/auth")
 
@@ -49,19 +51,12 @@ func main() {
 		ClientID:     cfg.ClientID,
 		ClientSecret: cfg.ClientSecret,
 		RedirectURL:  cfg.RedirectURL,
-		StateStore:   state.NewCookieStore(cookie.DefaultCookieConfig),
-	}, sessionStore)
+	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("login config failed")
 	}
 
 	login.RegisterRoutes(agr)
-
-	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
-		Skipper: server.LoginSkipper("/auth"),
-		Store:   sessionStore,
-	})
-	e.Use(sessionMiddleware)
 
 	fs := s3middleware.New(s3middleware.FilesConfig{
 		SPA:     true,
