@@ -27,7 +27,13 @@ $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}:
 	@mv $(BIN_DIR)/golangci-lint $@
 
 $(BIN_DIR)/mockgen:
+	@go get -u github.com/golang/mock/mockgen
 	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/golang/mock/mockgen
+
+mocks: $(BIN_DIR)/mockgen
+	@echo "--- build all the mocks"
+	@bin/mockgen -destination=mocks/session_store.go -package=mocks github.com/dghubble/sessions Store
+.PHONY: mocks
 
 clean:
 	@echo "--- clean all the things"
