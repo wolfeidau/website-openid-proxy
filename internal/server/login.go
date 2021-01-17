@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/coreos/go-oidc"
@@ -26,6 +27,28 @@ const (
 type Callback struct {
 	Code  string `query:"code"`
 	State string `query:"state"`
+}
+
+// UserInfo user info returned by user info route
+type UserInfo struct {
+	Sub   string `json:"sub,omitempty"`
+	Email string `json:"email,omitempty"`
+}
+
+func userInfoFromValues(val map[string]interface{}) (*UserInfo, error) {
+	sub, ok := val["sub"].(string)
+	if !ok {
+		return nil, errors.New("failed to read sub")
+	}
+	email, ok := val["email"].(string)
+	if !ok {
+		return nil, errors.New("failed to read email")
+	}
+
+	return &UserInfo{
+		Sub:   sub,
+		Email: email,
+	}, nil
 }
 
 // Auth authentication related handlers
@@ -180,7 +203,26 @@ func (l *Auth) Callback(c echo.Context) error {
 
 // UserInfo user info http handler
 func (l *Auth) UserInfo(c echo.Context) error {
-	return c.NoContent(http.StatusNotImplemented)
+
+	ctx := c.Request().Context()
+
+	session, err := echosessions.Get(loggedInCookieName, c)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to get session")
+
+		// TODO: Need an error page
+		return c.String(http.StatusUnauthorized, "failed to process request")
+	}
+
+	info, err := userInfoFromValues(session.Values)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to read user info from session")
+
+		// TODO: Need an error page
+		return c.String(http.StatusInternalServerError, "failed to process request")
+	}
+
+	return c.JSON(http.StatusOK, info)
 }
 
 // Logout logout http handler
@@ -190,7 +232,7 @@ func (l *Auth) Logout(c echo.Context) error {
 
 	err := echosessions.Destroy(loggedInCookieName, c)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to get new session")
+		log.Ctx(ctx).Error().Err(err).Msg("failed to destroy session")
 
 		// TODO: Need an error page
 		return c.String(http.StatusInternalServerError, "failed to process request")
