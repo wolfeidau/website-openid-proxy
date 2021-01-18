@@ -9,11 +9,17 @@ GOLANGCI_VERSION = 1.31.0
 GIT_HASH := $(shell git rev-parse --short HEAD)
 BUILD_DATE := $(shell date -u '+%Y%m%dT%H%M%S')
 
+DEPLOY_BUCKET_SSM_PATH ?= "/config/$(STAGE)/$(BRANCH)/$(APPNAME)/deploy_bucket"
+
 # This path is used to cache binaries used for development and can be overridden to avoid issues with osx vs linux
 # binaries.
 BIN_DIR ?= $(shell pwd)/bin
 
-default: clean build archive deploy-bucket package deploy
+default: clean build archive deploy-bucket package deploy-api
+.PHONY: default
+
+deploy: build archive package deploy-api
+.PHONY: deploy
 
 ci: clean lint test
 .PHONY: ci
@@ -85,7 +91,7 @@ package:
 	@sam package \
 		--template-file sam/backend/api.yaml \
 		--output-template-file dist/api.out.yaml \
-		--s3-bucket $(shell aws ssm get-parameter --name "/config/$(STAGE)/$(BRANCH)/$(APPNAME)/deploy_bucket" --query 'Parameter.Value' --output text) \
+		--s3-bucket $(shell aws ssm get-parameter --name $(DEPLOY_BUCKET_SSM_PATH) --query 'Parameter.Value' --output text) \
 		--s3-prefix sam/$(GIT_HASH)
 .PHONY: package
 
@@ -96,7 +102,7 @@ publish:
 		--semantic-version $(SAR_VERSION)
 .PHONY: publish
 
-deploy:
+deploy-api:
 	@echo "--- deploy stack $(APPNAME)-$(STAGE)-$(BRANCH)"
 	@sam deploy \
 		--no-fail-on-empty-changeset \
@@ -108,4 +114,4 @@ deploy:
 			ClientID=$(CLIENT_ID) ClientSecret=$(CLIENT_SECRET) Issuer=$(ISSUER) \
 			HostedZoneId=$(HOSTED_ZONE_ID) HostedZoneName=$(HOSTED_ZONE_NAME) \
 			SubDomainName=$(SUBDOMAIN_NAME)
-.PHONY: deploy
+.PHONY: deploy-api

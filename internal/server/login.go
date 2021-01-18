@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/flags"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/pkce"
 	"golang.org/x/oauth2"
 )
@@ -53,18 +54,18 @@ func userInfoFromValues(val map[string]interface{}) (*UserInfo, error) {
 
 // Auth authentication related handlers
 type Auth struct {
-	authConfig *AuthConfig
+	authConfig *flags.API
 	provider   *oidc.Provider
 }
 
 // NewAuth new auth server http handlers
-func NewAuth(ac *AuthConfig) (*Auth, error) {
+func NewAuth(ac *flags.API, providerFunc ProviderFunc) (*Auth, error) {
 
-	if err := ac.Valid(); err != nil {
-		return nil, err
+	if providerFunc == nil {
+		return nil, errors.New("missing provider func")
 	}
 
-	provider, err := ac.ProviderFunc(context.Background(), ac.Issuer)
+	provider, err := providerFunc(context.Background(), ac.Issuer)
 	if err != nil {
 		return nil, err
 	}

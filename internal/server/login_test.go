@@ -12,15 +12,20 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/flags"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/logger"
 	"github.com/wolfeidau/s3website-openid-proxy/mocks"
 )
+
+var mockProviderFunc = func(ctx context.Context, issuer string) (*oidc.Provider, error) {
+	return &oidc.Provider{}, nil
+}
 
 func TestLogin(t *testing.T) {
 
 	assert := require.New(t)
 
-	auth, err := NewAuth(newConfig())
+	auth, err := NewAuth(newConfig(), mockProviderFunc)
 	assert.NoError(err)
 
 	e := echo.New()
@@ -51,7 +56,7 @@ func TestLogin(t *testing.T) {
 func TestUserInfo(t *testing.T) {
 	assert := require.New(t)
 
-	auth, err := NewAuth(newConfig())
+	auth, err := NewAuth(newConfig(), mockProviderFunc)
 	assert.NoError(err)
 
 	e := echo.New()
@@ -94,7 +99,7 @@ func TestUserInfo(t *testing.T) {
 func TestUserInfo_StatusUnauthorized(t *testing.T) {
 	assert := require.New(t)
 
-	auth, err := NewAuth(newConfig())
+	auth, err := NewAuth(newConfig(), mockProviderFunc)
 	assert.NoError(err)
 
 	e := echo.New()
@@ -121,14 +126,11 @@ func TestUserInfo_StatusUnauthorized(t *testing.T) {
 	assert.Equal(http.StatusUnauthorized, rec.Result().StatusCode)
 }
 
-func newConfig() *AuthConfig {
-	return &AuthConfig{
+func newConfig() *flags.API {
+	return &flags.API{
 		Issuer:       "http://localhost",
 		ClientID:     "abc123",
 		ClientSecret: "cde456",
 		RedirectURL:  "http://localhost/callback",
-		ProviderFunc: func(ctx context.Context, issuer string) (*oidc.Provider, error) {
-			return &oidc.Provider{}, nil
-		},
 	}
 }
