@@ -1,6 +1,10 @@
 package flags
 
-import "github.com/alecthomas/kong"
+import (
+	"errors"
+
+	"github.com/alecthomas/kong"
+)
 
 // API api related flags passing in env variables
 type API struct {
@@ -14,4 +18,23 @@ type API struct {
 	RedirectURL      string `help:"The redirect URL used for callbacks." env:"REDIRECT_URL"`
 	SessionSecretArn string `help:"The ARN of the secret used to sign sessions." env:"SESSION_SECRET_ARN"`
 	WebsiteBucket    string `help:"The name of the website S3 bucket holding content to be served." env:"WEBSITE_BUCKET"`
+}
+
+// Valid validate our flags
+func (c *API) Valid() error {
+	if c.Issuer == "" {
+		return errors.New("empty Issuer")
+	}
+	if c.ClientID == "" {
+		return errors.New("empty ClientID")
+	}
+	if c.ClientSecret == "" {
+		return errors.New("empty ClientSecret")
+	}
+
+	if c.RedirectURL == "" {
+		return errors.New("empty RedirectURL")
+	}
+
+	return nil
 }

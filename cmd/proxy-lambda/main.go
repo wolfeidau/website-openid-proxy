@@ -8,7 +8,7 @@ import (
 	"github.com/apex/gateway/v2"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/dghubble/sessions"
+	"github.com/coreos/go-oidc"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	s3middleware "github.com/wolfeidau/echo-s3-middleware"
@@ -16,10 +16,10 @@ import (
 	"github.com/wolfeidau/lambda-go-extras/middleware/raw"
 	zlog "github.com/wolfeidau/lambda-go-extras/middleware/zerolog"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/app"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/flags"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/secrets"
 	"github.com/wolfeidau/s3website-openid-proxy/internal/server"
+	"github.com/wolfeidau/s3website-openid-proxy/internal/session"
 )
 
 var cfg = new(flags.API)
@@ -29,31 +29,27 @@ func main() {
 		kong.Vars{"version": fmt.Sprintf("%s_%s", app.Commit, app.BuildDate)}, // bind a var for version
 	)
 
-	secretCache := secrets.NewCache(&aws.Config{})
-
-	sessionSecret, err := secretCache.GetValue(cfg.SessionSecretArn)
-	if err != nil {
-		log.Fatal().Err(err).Msg("login config failed")
+	if err := cfg.Valid(); err != nil {
+		log.Fatal().Err(err).Msg("config validation failed")
 	}
 
 	e := echo.New()
 
+	secretCache := secrets.NewCache(&aws.Config{})
+
 	// session middleware is available everwhere
-	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
-		Store: sessions.NewCookieStore([]byte(sessionSecret), nil),
-	})
+	sessionMiddleware, err := session.SetupMiddleware(cfg, secretCache)
+	if err != nil {
+		log.Fatal().Err(err).Msg("session middleware setup failed")
+	}
+
 	e.Use(sessionMiddleware)
 
 	agr := e.Group("/auth")
 
-	login, err := server.NewAuth(&server.AuthConfig{
-		Issuer:       cfg.Issuer,
-		ClientID:     cfg.ClientID,
-		ClientSecret: cfg.ClientSecret,
-		RedirectURL:  cfg.RedirectURL,
-	})
+	login, err := server.NewAuth(cfg, oidc.NewProvider)
 	if err != nil {
-		log.Fatal().Err(err).Msg("login config failed")
+		log.Fatal().Err(err).Msg("auth config failed")
 	}
 
 	login.RegisterRoutes(agr)
