@@ -21,7 +21,8 @@ const (
 	loggedInCookieName   = "proxy_login_session"
 	loggedInCookieExpiry = 8 * 60 * 60 // 8 hours
 
-	stateLength = 32
+	stateLength    = 32
+	verifierLength = 32
 )
 
 // Callback callback info
@@ -79,7 +80,7 @@ func (l *Auth) Login(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	state := MustRandomState(stateLength)
-	verifier := pkce.MustNewVerifier(32)
+	verifier := pkce.MustNewVerifier(verifierLength)
 
 	authSess, err := echosessions.New(authCookieName, c)
 	if err != nil {
