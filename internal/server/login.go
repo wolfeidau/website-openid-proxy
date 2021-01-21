@@ -8,9 +8,9 @@ import (
 	"github.com/coreos/go-oidc"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/flags"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/pkce"
+	"github.com/wolfeidau/website-openid-proxy/internal/echosessions"
+	"github.com/wolfeidau/website-openid-proxy/internal/flags"
+	"github.com/wolfeidau/website-openid-proxy/internal/pkce"
 	"golang.org/x/oauth2"
 )
 

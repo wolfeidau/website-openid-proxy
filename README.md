@@ -1,4 +1,4 @@
-# s3website-openid-proxy
+# website-openid-proxy
 
 This service provides [OpenID](https://openid.net/) authenticated access to a static website hosted in an s3 bucket.  
 

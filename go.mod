@@ -1,4 +1,4 @@
-module github.com/wolfeidau/s3website-openid-proxy
+module github.com/wolfeidau/website-openid-proxy
 
 go 1.15
 

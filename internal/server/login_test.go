@@ -11,10 +11,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/flags"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/logger"
-	"github.com/wolfeidau/s3website-openid-proxy/mocks"
+	"github.com/wolfeidau/website-openid-proxy/internal/echosessions"
+	"github.com/wolfeidau/website-openid-proxy/internal/flags"
+	"github.com/wolfeidau/website-openid-proxy/internal/logger"
+	"github.com/wolfeidau/website-openid-proxy/mocks"
 )
 
 var mockProviderFunc = func(ctx context.Context, issuer string) (*oidc.Provider, error) {
