@@ -36,6 +36,10 @@ $(BIN_DIR)/mockgen:
 	@go get -u github.com/golang/mock/mockgen
 	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/golang/mock/mockgen
 
+$(BIN_DIR)/gosec:
+	@go get -u github.com/securego/gosec/v2/cmd/gosec@327b2a0841836d0fce89ef79b3050e7b255dd533
+	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/securego/gosec/v2/cmd/gosec
+
 mocks: $(BIN_DIR)/mockgen
 	@echo "--- build all the mocks"
 	@bin/mockgen -destination=mocks/session_store.go -package=mocks github.com/dghubble/sessions Store
@@ -45,6 +49,12 @@ clean:
 	@echo "--- clean all the things"
 	@rm -rf ./dist
 .PHONY: clean
+
+scanpr: $(BIN_DIR)/gosec
+	$(BIN_DIR)/gosec -fmt golint ./...
+
+scan: $(BIN_DIR)/gosec
+	$(BIN_DIR)/gosec -fmt sarif ./... > results.sarif
 
 lint: $(BIN_DIR)/golangci-lint
 	@echo "--- lint all the things"

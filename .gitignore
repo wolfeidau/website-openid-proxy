@@ -6,3 +6,4 @@
 /handler.zip
 /*.out.yaml
 /vendor
+/*.sarif
