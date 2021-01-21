@@ -1,4 +1,4 @@
-APPNAME := s3website-openid-proxy
+APPNAME := website-openid-proxy
 STAGE ?= dev
 BRANCH ?= master
 SAR_VERSION ?= 1.0.0

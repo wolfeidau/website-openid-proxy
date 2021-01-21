@@ -15,11 +15,11 @@ import (
 	lmw "github.com/wolfeidau/lambda-go-extras/middleware"
 	"github.com/wolfeidau/lambda-go-extras/middleware/raw"
 	zlog "github.com/wolfeidau/lambda-go-extras/middleware/zerolog"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/app"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/flags"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/secrets"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/server"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/session"
+	"github.com/wolfeidau/website-openid-proxy/internal/app"
+	"github.com/wolfeidau/website-openid-proxy/internal/flags"
+	"github.com/wolfeidau/website-openid-proxy/internal/secrets"
+	"github.com/wolfeidau/website-openid-proxy/internal/server"
+	"github.com/wolfeidau/website-openid-proxy/internal/session"
 )
 
 var cfg = new(flags.API)

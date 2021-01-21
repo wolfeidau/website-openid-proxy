@@ -4,7 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
-	"github.com/wolfeidau/s3website-openid-proxy/internal/echosessions"
+	"github.com/wolfeidau/website-openid-proxy/internal/echosessions"
 )
 
 type Config struct {
