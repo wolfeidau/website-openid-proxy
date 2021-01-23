@@ -38,3 +38,11 @@ func (c *API) Valid() error {
 
 	return nil
 }
+
+// ServerAPI server api related flags passing in env variables
+type ServerAPI struct {
+	API
+	Port     string `help:"Port number to bind our TLS listener." env:"PORT" default:"9443"`
+	CertFile string `help:"Certificate used to bind our TLS listener." env:"CERT_FILE" default:".certs/siteproxy.localhost.pem"`
+	KeyFile  string `help:"Private Key used to bind our TLS listener." env:"KEY_FILE" default:".certs/siteproxy.localhost.key"`
+}
