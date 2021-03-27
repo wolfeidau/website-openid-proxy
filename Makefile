@@ -3,6 +3,7 @@ STAGE ?= dev
 BRANCH ?= master
 SAR_VERSION ?= 1.0.0
 MODULE_PKG := github.com/wolfeidau/s3website-openid-proxy
+WATCH := (.go$$)|(.html$$)
 
 GOLANGCI_VERSION = 1.31.0
 
@@ -37,8 +38,13 @@ $(BIN_DIR)/mockgen:
 	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/golang/mock/mockgen
 
 $(BIN_DIR)/gosec:
-	@go get -u github.com/securego/gosec/v2/cmd/gosec@327b2a0841836d0fce89ef79b3050e7b255dd533
+	@go get -u github.com/securego/gosec/v2/cmd/gosec@master
 	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/securego/gosec/v2/cmd/gosec
+
+
+$(BIN_DIR)/reflex:
+	@go get -u github.com/cespare/reflex
+	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/cespare/reflex
 
 mocks: $(BIN_DIR)/mockgen
 	@echo "--- build all the mocks"
@@ -53,8 +59,9 @@ clean:
 scanpr: $(BIN_DIR)/gosec
 	$(BIN_DIR)/gosec -fmt golint ./...
 
-scan: $(BIN_DIR)/gosec
-	$(BIN_DIR)/gosec -fmt sarif ./... > results.sarif
+scan-report: $(BIN_DIR)/gosec
+	$(BIN_DIR)/gosec -no-fail -fmt sarif -out results.sarif ./...
+.PHONY: scan-report
 
 lint: $(BIN_DIR)/golangci-lint
 	@echo "--- lint all the things"
@@ -71,6 +78,10 @@ test:
 	@go test -coverprofile=coverage.txt ./...
 	@go tool cover -func=coverage.txt
 .PHONY: test
+
+watch: $(BIN_DIR)/reflex
+	$(BIN_DIR)/reflex -r "$(WATCH)" -s -- go run cmd/proxy-server/main.go
+.PHONY: watch
 
 build:
 	@echo "--- build all the things"

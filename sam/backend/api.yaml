@@ -156,3 +156,6 @@ Outputs:
   WebsiteBucketName:
     Description: The name of the bucket hosting website content.
     Value: !Ref WebsiteBucket
+  SessionSecretARN:
+    Description: The Secret used to sign sessions.
+    Value: !Ref SessionSecret
