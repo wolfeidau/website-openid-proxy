@@ -31,7 +31,7 @@ func TestLogin(t *testing.T) {
 	e := echo.New()
 
 	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
-		Store: sessions.NewCookieStore([]byte("test"), nil),
+		Store: sessions.NewCookieStore[string](sessions.DefaultCookieConfig, []byte("test"), nil),
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/login", nil)
@@ -66,12 +66,12 @@ func TestUserInfo(t *testing.T) {
 
 	sessionStore := mocks.NewMockStore(ctrl)
 
-	sessionStore.EXPECT().Get(gomock.Any(), loggedInCookieName).Return(&sessions.Session{
-		Values: map[string]interface{}{
-			"sub":   "abc123",
-			"email": "mark@wolfe.id.au",
-		},
-	}, nil)
+	sess := sessions.NewSession[string](sessionStore, loggedInCookieName)
+
+	sess.Set("sub", "abc123")
+	sess.Set("email", "mark@wolfe.id.au")
+
+	sessionStore.EXPECT().Get(gomock.Any(), loggedInCookieName).Return(sess, nil)
 
 	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
 		Store: sessionStore,
@@ -105,7 +105,7 @@ func TestUserInfo_StatusUnauthorized(t *testing.T) {
 	e := echo.New()
 
 	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
-		Store: sessions.NewCookieStore([]byte("test"), nil),
+		Store: sessions.NewCookieStore[string](sessions.DefaultCookieConfig, []byte("test"), nil),
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/userinfo", nil)

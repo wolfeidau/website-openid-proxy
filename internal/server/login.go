@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/coreos/go-oidc"
+	"github.com/dghubble/sessions"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/wolfeidau/website-openid-proxy/internal/echosessions"
@@ -37,12 +38,12 @@ type UserInfo struct {
 	Email string `json:"email,omitempty"`
 }
 
-func userInfoFromValues(val map[string]interface{}) (*UserInfo, error) {
-	sub, ok := val["sub"].(string)
+func userInfoFromSession(val *sessions.Session[string]) (*UserInfo, error) {
+	sub, ok := val.GetOk("sub")
 	if !ok {
 		return nil, errors.New("failed to read sub")
 	}
-	email, ok := val["email"].(string)
+	email, ok := val.GetOk("email")
 	if !ok {
 		return nil, errors.New("failed to read email")
 	}
@@ -90,11 +91,14 @@ func (l *Auth) Login(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "failed to process request")
 	}
 
+	authSess.Set("state", state)
+	authSess.Set("verifier", verifier)
+
 	// override the default cookie settings
-	authSess.Config.MaxAge = authCookieExpiry
-	authSess.Config.Secure = true
-	authSess.Values["state"] = state
-	authSess.Values["verifier"] = verifier
+	// authSess.Config.MaxAge = authCookieExpiry
+	// authSess.Config.Secure = true
+	// authSess.Values["state"] = state
+	// authSess.Values["verifier"] = verifier
 
 	err = authSess.Save(c.Response())
 	if err != nil {
@@ -136,7 +140,7 @@ func (l *Auth) Callback(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "failed to process request")
 	}
 
-	state, ok := authSess.Values["state"].(string)
+	state, ok := authSess.GetOk("state")
 	if !ok {
 		log.Ctx(ctx).Error().Msg("missing state attribute from session")
 
@@ -144,7 +148,7 @@ func (l *Auth) Callback(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "failed to process request")
 	}
 
-	verifier, ok := authSess.Values["verifier"].(string)
+	verifier, ok := authSess.GetOk("verifier")
 	if !ok {
 		log.Ctx(ctx).Error().Msg("missing verifier attribute from session")
 
@@ -187,10 +191,12 @@ func (l *Auth) Callback(c echo.Context) error {
 	}
 
 	// override the default cookie settings
-	loginSess.Config.Secure = true
-	loginSess.Config.MaxAge = loggedInCookieExpiry
-	loginSess.Values["email"] = userInfo.Email
-	loginSess.Values["sub"] = userInfo.Subject
+	// loginSess.Config.Secure = true
+	// loginSess.Config.MaxAge = loggedInCookieExpiry
+	// loginSess.Values["email"] = userInfo.Email
+	// loginSess.Values["sub"] = userInfo.Subject
+	loginSess.Set("email", userInfo.Email)
+	loginSess.Set("sub", userInfo.Subject)
 
 	err = loginSess.Save(c.Response())
 	if err != nil {
@@ -216,7 +222,7 @@ func (l *Auth) UserInfo(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "failed to process request")
 	}
 
-	info, err := userInfoFromValues(session.Values)
+	info, err := userInfoFromSession(session)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("failed to read user info from session")
 
