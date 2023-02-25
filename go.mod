@@ -17,8 +17,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/wolfeidau/echo-s3-middleware v1.2.1-0.20210114095551-db494251c0ef
 	github.com/wolfeidau/lambda-go-extras v1.2.1
-	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20201208152858-08078c50e5b5
-	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
