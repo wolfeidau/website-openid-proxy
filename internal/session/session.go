@@ -18,7 +18,8 @@ func SetupMiddleware(cfg *flags.API, secretCache *secrets.Cache) (echo.Middlewar
 
 	// session middleware is available everwhere
 	sessionMiddleware := echosessions.MiddlewareWithConfig(echosessions.Config{
-		Store: sessions.NewCookieStore(
+		Store: sessions.NewCookieStore[string](
+			sessions.DefaultCookieConfig,
 			[]byte(sessionSecret),
 			nil,
 		),

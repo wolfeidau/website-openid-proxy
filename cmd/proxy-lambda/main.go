@@ -86,5 +86,5 @@ func main() {
 
 	h := ch.Then(gw)
 
-	lambda.StartHandler(h)
+	lambda.StartWithOptions(h)
 }

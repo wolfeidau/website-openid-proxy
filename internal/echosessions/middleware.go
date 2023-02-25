@@ -16,7 +16,7 @@ type (
 
 		// Session store.
 		// Required.
-		Store sessions.Store
+		Store sessions.Store[string]
 	}
 )
 
@@ -32,22 +32,22 @@ var (
 )
 
 // Get returns a named session.
-func Get(name string, c echo.Context) (*sessions.Session, error) {
+func Get(name string, c echo.Context) (*sessions.Session[string], error) {
 	s := c.Get(key)
 	if s == nil {
 		return nil, fmt.Errorf("%q session not found", name)
 	}
-	store := s.(sessions.Store)
+	store := s.(sessions.Store[string])
 	return store.Get(c.Request(), name)
 }
 
 // New returns a new session
-func New(name string, c echo.Context) (*sessions.Session, error) {
+func New(name string, c echo.Context) (*sessions.Session[string], error) {
 	s := c.Get(key)
 	if s == nil {
 		return nil, fmt.Errorf("%q session not found", name)
 	}
-	store := s.(sessions.Store)
+	store := s.(sessions.Store[string])
 
 	return store.New(name), nil
 }
@@ -58,7 +58,7 @@ func Destroy(name string, c echo.Context) error {
 	if s == nil {
 		return fmt.Errorf("%q session not found", name)
 	}
-	store := s.(sessions.Store)
+	store := s.(sessions.Store[string])
 
 	store.Destroy(c.Response(), name)
 
@@ -66,7 +66,7 @@ func Destroy(name string, c echo.Context) error {
 }
 
 // Middleware returns a Session middleware.
-func Middleware(store sessions.Store) echo.MiddlewareFunc {
+func Middleware(store sessions.Store[string]) echo.MiddlewareFunc {
 	c := DefaultConfig
 	c.Store = store
 	return MiddlewareWithConfig(c)

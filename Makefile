@@ -4,7 +4,7 @@ BRANCH ?= master
 SAR_VERSION ?= 1.0.0
 MODULE_PKG := github.com/wolfeidau/s3website-openid-proxy
 
-GOLANGCI_VERSION = 1.31.0
+GOLANGCI_VERSION = v1.51.2
 
 GIT_HASH := $(shell git rev-parse --short HEAD)
 BUILD_DATE := $(shell date -u '+%Y%m%dT%H%M%S')
@@ -26,10 +26,11 @@ ci: clean lint test
 
 LDFLAGS := -ldflags="-s -w -X $(MODULE_PKG)/internal/app.BuildDate=${BUILD_DATE} -X $(MODULE_PKG)/internal/app.Commit=${GIT_HASH}"
 
+
 $(BIN_DIR)/golangci-lint: $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}
 	@ln -sf golangci-lint-${GOLANGCI_VERSION} $(BIN_DIR)/golangci-lint
 $(BIN_DIR)/golangci-lint-${GOLANGCI_VERSION}:
-	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | BINARY=golangci-lint bash -s -- v${GOLANGCI_VERSION}
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s $(GOLANGCI_VERSION)
 	@mv $(BIN_DIR)/golangci-lint $@
 
 $(BIN_DIR)/mockgen:
@@ -39,11 +40,6 @@ $(BIN_DIR)/mockgen:
 $(BIN_DIR)/gosec:
 	@go get -u github.com/securego/gosec/v2/cmd/gosec@327b2a0841836d0fce89ef79b3050e7b255dd533
 	@env GOBIN=$(BIN_DIR) GO111MODULE=on go install github.com/securego/gosec/v2/cmd/gosec
-
-mocks: $(BIN_DIR)/mockgen
-	@echo "--- build all the mocks"
-	@bin/mockgen -destination=mocks/session_store.go -package=mocks github.com/dghubble/sessions Store
-.PHONY: mocks
 
 clean:
 	@echo "--- clean all the things"

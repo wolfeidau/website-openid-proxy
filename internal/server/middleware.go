@@ -23,7 +23,7 @@ func CheckAuthWithConfig(cfg Config) echo.MiddlewareFunc {
 				return c.Redirect(302, "/auth/login")
 			}
 
-			log.Ctx(c.Request().Context()).Info().Fields(sess.Values).Msg("user request")
+			log.Ctx(c.Request().Context()).Info().Str("email", sess.Get("email")).Msg("user request")
 
 			return next(c)
 		}
